@@ -226,8 +226,6 @@ struct HomeView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(Date().formatted(.dateTime.weekday(.wide).day().month(.wide)).uppercased())
-                    .font(.system(size: 12, weight: .heavy)).tracking(1.2).foregroundStyle(AQ.secondary)
                 Wordmark(size: 38)
             }
             Spacer()
