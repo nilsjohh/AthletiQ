@@ -21,71 +21,92 @@ struct TeamWidget: Widget {
 
 // MARK: - Configuration
 
-struct LeagueEntity: AppEntity {
-    let id: String
-    let name: String
-    static var typeDisplayRepresentation: TypeDisplayRepresentation = "League"
-    static var defaultQuery = LeagueQuery()
-    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
-    init(_ l: LeagueRef) { id = l.path; name = l.name }
-}
-
-struct LeagueQuery: EntityQuery {
-    func entities(for identifiers: [String]) async throws -> [LeagueEntity] {
-        identifiers.compactMap(Catalog.league).map(LeagueEntity.init)
-    }
-    func suggestedEntities() async throws -> [LeagueEntity] {
-        Catalog.leagues.filter { $0.kind == .team }.map(LeagueEntity.init)
-    }
-    func defaultResult() async -> LeagueEntity? { Catalog.league("soccer/eng.1").map(LeagueEntity.init) }
-}
-
+/// A team choice. The id carries everything needed ("leaguePath|teamID|name"),
+/// so a saved choice never needs a network lookup to be restored.
 struct TeamEntity: AppEntity {
-    let id: String   // "leaguePath|teamID"
-    let name: String
+    let id: String
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Team"
     static var defaultQuery = TeamQuery()
-    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
 
-    var key: TeamKey? {
-        let parts = id.split(separator: "|")
-        guard parts.count == 2 else { return nil }
-        return TeamKey(leaguePath: String(parts[0]), id: String(parts[1]))
+    init(path: String, team: TeamInfo) { id = "\(path)|\(team.id)|\(team.name)" }
+    init?(id: String) {
+        guard id.split(separator: "|", maxSplits: 2).count >= 2 else { return nil }
+        self.id = id
+    }
+
+    private var parts: [String] { id.split(separator: "|", maxSplits: 2).map(String.init) }
+    var name: String { parts.count > 2 ? parts[2] : "Team" }
+    var leagueName: String { Catalog.league(parts[0])?.name ?? "" }
+    var key: TeamKey? { parts.count >= 2 ? TeamKey(leaguePath: parts[0], id: parts[1]) : nil }
+
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(title: "\(name)", subtitle: "\(leagueName)")
     }
 }
 
+/// Every pro team, grouped by league (cups and European competitions left out,
+/// since their clubs already appear under their home league).
 struct TeamQuery: EntityStringQuery {
-    @IntentParameterDependency<SelectTeamIntent>(\.$league) var config
+    static let leagues: [LeagueRef] = Catalog.leagues.filter {
+        $0.kind == .team && !$0.isCollege && !["Europe", "World", "South America"].contains($0.region) && !$0.name.contains("Cup")
+    }
 
-    private func teams(_ path: String) async -> [TeamEntity] {
-        guard let l = Catalog.league(path) else { return [] }
-        return await ESPN.teams(l).map { TeamEntity(id: "\(path)|\($0.id)", name: $0.name) }
+    private func grouped() async -> [(LeagueRef, [TeamEntity])] {
+        let lists = await TeamListCache.shared.lists(Self.leagues)
+        return Self.leagues.compactMap { l in
+            guard let t = lists[l.path], !t.isEmpty else { return nil }
+            return (l, t)
+        }
+    }
+
+    private func collection(_ groups: [(LeagueRef, [TeamEntity])]) -> IntentItemCollection<TeamEntity> {
+        IntentItemCollection(sections: groups.map { l, teams in
+            IntentItemSection(LocalizedStringResource(stringLiteral: l.name), items: teams)
+        })
     }
 
     func entities(for identifiers: [String]) async throws -> [TeamEntity] {
-        var out: [TeamEntity] = []
-        for id in identifiers {
-            let path = String(id.split(separator: "|").first ?? "")
-            if let match = await teams(path).first(where: { $0.id == id }) { out.append(match) }
+        identifiers.compactMap(TeamEntity.init(id:))
+    }
+
+    func suggestedEntities() async throws -> IntentItemCollection<TeamEntity> {
+        collection(await grouped())
+    }
+
+    func entities(matching string: String) async throws -> IntentItemCollection<TeamEntity> {
+        let groups = await grouped().compactMap { l, teams -> (LeagueRef, [TeamEntity])? in
+            let hits = teams.filter { $0.name.localizedCaseInsensitiveContains(string) }
+            return hits.isEmpty ? nil : (l, hits)
         }
-        return out
+        return collection(groups)
     }
+}
 
-    func suggestedEntities() async throws -> [TeamEntity] {
-        await teams(config?.league.id ?? "soccer/eng.1")
-    }
+/// Team lists per league, fetched once per widget process (search reuses them).
+actor TeamListCache {
+    static let shared = TeamListCache()
+    private var cache: [String: [TeamEntity]] = [:]
 
-    func entities(matching string: String) async throws -> [TeamEntity] {
-        try await suggestedEntities().filter { $0.name.localizedCaseInsensitiveContains(string) }
+    func lists(_ leagues: [LeagueRef]) async -> [String: [TeamEntity]] {
+        let missing = leagues.filter { cache[$0.path] == nil }
+        if !missing.isEmpty {
+            let fetched = await withTaskGroup(of: (String, [TeamEntity]).self) { g in
+                for l in missing {
+                    g.addTask { (l.path, await ESPN.teams(l).map { TeamEntity(path: l.path, team: $0) }) }
+                }
+                var out: [String: [TeamEntity]] = [:]
+                for await (p, t) in g { out[p] = t }
+                return out
+            }
+            for (p, t) in fetched where !t.isEmpty { cache[p] = t }
+        }
+        return cache
     }
 }
 
 struct SelectTeamIntent: WidgetConfigurationIntent {
     static var title: LocalizedStringResource = "Choose Team"
-    static var description = IntentDescription("Pick the league and team this widget follows.")
-
-    @Parameter(title: "League")
-    var league: LeagueEntity?
+    static var description = IntentDescription("Pick the team this widget follows.")
 
     @Parameter(title: "Team")
     var team: TeamEntity?
