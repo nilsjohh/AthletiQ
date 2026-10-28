@@ -2,7 +2,7 @@
 
 <h1 align="center">AthletiQ</h1>
 
-<p align="center">THE ULTIMATE APP FOR ALL THINGS SPORTS: Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team. By Nils. </p>
+<p align="center">𝗧𝗛𝗘 𝗨𝗟𝗧𝗜𝗠𝗔𝗧𝗘 𝗔𝗣𝗣 𝗙𝗢𝗥 𝗔𝗟𝗟 𝗧𝗛𝗜𝗡𝗚𝗦 𝗦𝗣𝗢𝗥𝗧𝗦: Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team </p>
 
 ## 🚨HOW TO DOWNLOAD 🚨
 
