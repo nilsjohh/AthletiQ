@@ -9,7 +9,7 @@
 1. Download **[AthletiQ.zip](https://github.com/nilsjohh/AthletiQ/releases/latest/download/AthletiQ.zip)** from the latest release.
 2. Unzip it and drag **AthletiQ** into your **Applications** folder.
 3. Open it. macOS shows a warning that Apple can't verify the app, because it isn't distributed through the App Store. Click **Done**.
-4. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway** next to the AthletiQ message. Confirm with your password.
+4. Open **System Settings › Privacy & Security**, SCROLL DOWN, and click **OPEN ANYWAY** next to the AthletiQ message. Confirm with your touch-id/password.
 5. AthletiQ opens, and from now on it opens normally.
 
 
