@@ -63,4 +63,4 @@ Open `AthletiQ.xcodeproj` in Xcode 26 or later and run the **AthletiQ** scheme.
 
 ## Notes
 
-Scores and stats come from ESPN's public data feeds. AthletiQ isn't affiliated with ESPN or any league or team, and team names and logos belong to their owners. This is a personal project shared with friends.
+Scores and stats come from Nils SportsNetwork's private data feeds. AthletiQ isn't affiliated with any league or team, and team names and logos belong to their owners. This is a personal project shared with friends.
