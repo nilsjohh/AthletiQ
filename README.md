@@ -2,11 +2,11 @@
 
 <h1 align="center">AthletiQ</h1>
 
-<p align="center">Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team.</p>
+<p align="center">THE ULTIMATE APP FOR ALL THINGS SPORTS: Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team. By Nils. </p>
 
 <p align="center"><img src="docs/home.png" width="800" alt="AthletiQ home screen"></p>
 
-## Download
+## 🚨HOW TO DOWNLOAD 🚨
 
 1. Download **[AthletiQ.zip](https://github.com/nilsjohh/AthletiQ/releases/latest/download/AthletiQ.zip)** from the latest release.
 2. Unzip it and drag **AthletiQ** into your **Applications** folder.
@@ -14,7 +14,6 @@
 4. Open **System Settings › Privacy & Security**, scroll down, and click **Open Anyway** next to the AthletiQ message. Confirm with your password.
 5. AthletiQ opens, and from now on it opens normally.
 
-If you're comfortable with Terminal, this single command does the same as steps 3–4:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/AthletiQ.app
@@ -22,16 +21,25 @@ xattr -dr com.apple.quarantine /Applications/AthletiQ.app
 
 **Requirements:** macOS 15 Sequoia or later, on an Apple Silicon or Intel Mac.
 
-### Add the widget
+### 🚨GET YOUR TEAM'S WIDGET 🚨
 
 Right-click your desktop › **Edit Widgets** › search **AthletiQ** › drag the size you want onto the desktop.
 To choose your team, right-click the widget › **Edit Widget** › pick a league and a team.
 
-### Updating
+
+
+
+
+
+
+
+
+
+### 🆕 Updating
 
 When a new version is out, download the new zip from the latest release and replace the app in Applications.
 
-## What's inside
+## What's inside ⚽️🏀🏈⚾️
 
 - **Football** (25 leagues and cups: Premier League, LaLiga, Serie A, Bundesliga, Ligue 1, Champions League and more), **NBA, WNBA, NFL, MLB, NHL** and college sports, **rugby**, **Formula 1, NASCAR, IndyCar**, **golf**, **tennis**, **UFC**, **cricket** and **lacrosse**
 - Live scores that update during games, fixtures, results and full standings
