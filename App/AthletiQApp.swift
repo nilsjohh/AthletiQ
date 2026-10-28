@@ -138,10 +138,15 @@ struct Wordmark: View {
     var body: some View {
         HStack(spacing: size * 0.45) {
             AppMark(size: size * 1.45)
-            Text("AthletiQ")
-                .font(.system(size: size, weight: .semibold))
-                .tracking(-0.2)
-                .foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: size * 0.06) {
+                Text("AthletiQ")
+                    .font(.system(size: size, weight: .semibold))
+                    .tracking(-0.2)
+                    .foregroundStyle(.primary)
+                Text("By Nils SportsNetwork")
+                    .font(.system(size: max(10, size * 0.32), weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

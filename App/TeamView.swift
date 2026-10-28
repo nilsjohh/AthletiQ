@@ -164,6 +164,7 @@ struct TeamView: View {
             }
             .id(tab)
             .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .bottom)), removal: .opacity))
+            SiteFooter()
         }
         .padding(.horizontal, 30).padding(.vertical, 24)
         .frame(maxWidth: 1240)

@@ -447,7 +447,10 @@ struct Page<Content: View>: View {
         }
     }
     private var inner: some View {
-        VStack(alignment: .leading, spacing: 28) { content() }
+        VStack(alignment: .leading, spacing: 28) {
+            content()
+            SiteFooter()
+        }
             .padding(.horizontal, 30).padding(.vertical, 24)
             .frame(maxWidth: 1240)
             .frame(maxWidth: .infinity)
@@ -579,5 +582,16 @@ struct SkeletonPage: View {
             }
         }
         .transition(.opacity)
+    }
+}
+
+/// Small sign-off at the very bottom of every page.
+struct SiteFooter: View {
+    var body: some View {
+        Text("Nils SportsNetwork 2026")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(AQ.tertiary)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 12)
     }
 }
