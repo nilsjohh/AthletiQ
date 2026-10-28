@@ -4,8 +4,6 @@
 
 <p align="center">THE ULTIMATE APP FOR ALL THINGS SPORTS: Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team. By Nils. </p>
 
-<p align="center"><img src="docs/home.png" width="800" alt="AthletiQ home screen"></p>
-
 ## 🚨HOW TO DOWNLOAD 🚨
 
 1. Download **[AthletiQ.zip](https://github.com/nilsjohh/AthletiQ/releases/latest/download/AthletiQ.zip)** from the latest release.
