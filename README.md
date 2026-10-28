@@ -39,7 +39,7 @@ When a new version is out, download the new zip from the latest release and repl
 
 ## What's inside ⚽️🏀🏈⚾️
 
-- **Football** (25 leagues and cups: Premier League, LaLiga, Serie A, Bundesliga, Ligue 1, Champions League and more), **NBA, WNBA, NFL, MLB, NHL** and college sports, **rugby**, **Formula 1, NASCAR, IndyCar**, **golf**, **tennis**, **UFC**, **cricket** and **lacrosse**
+- **Football**/soccer (25 leagues and cups), **NBA, NFL, MLB, NHL, WNBA** and **college sports**, **rugby**, **Formula 1, NASCAR, IndyCar**, **golf**, **tennis**, **UFC**, **cricket** and **lacrosse**
 - Live scores that update during games, fixtures, results and full standings
 - Team pages in club colours with season stats, form, home/away splits and player leaders
 - Playoff brackets, UFC fight cards, race weekends, golf leaderboards and tennis draws
