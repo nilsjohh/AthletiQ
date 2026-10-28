@@ -19,7 +19,7 @@ xattr -dr com.apple.quarantine /Applications/AthletiQ.app
 
 **Requirements:** macOS 15 Sequoia or later, on an Apple Silicon or Intel Mac.
 
-### 🚨GET YOUR TEAM'S WIDGET 🚨
+### 💻 GET YOUR TEAM'S WIDGET  💻
 
 Right-click your desktop › **Edit Widgets** › search **AthletiQ** › drag the size you want onto the desktop.
 To choose your team, right-click the widget › **Edit Widget** › pick a league and a team.
