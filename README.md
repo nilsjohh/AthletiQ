@@ -1,6 +1,6 @@
 <p align="center"><img src="docs/icon.png" width="128" alt="AthletiQ icon"></p>
 
-<h1 align="center">AthletiQ </h1>
+<h1 align="center">AthletiQ for Mac </h1>
 
 <p align="center">𝗧𝗛𝗘 𝗨𝗟𝗧𝗜𝗠𝗔𝗧𝗘 𝗔𝗣𝗣 𝗙𝗢𝗥 𝗔𝗟𝗟 𝗧𝗛𝗜𝗡𝗚𝗦 𝗦𝗣𝗢𝗥𝗧𝗦: Live scores, fixtures, standings, playoff brackets and stats for every major sport, in one Mac app, with a desktop widget for your team </p>
 
