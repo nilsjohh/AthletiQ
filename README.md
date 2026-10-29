@@ -12,7 +12,7 @@
 4. Open **System Settings › Privacy & Security**, SCROLL DOWN, and click **OPEN ANYWAY** next to the AthletiQ message. Confirm with your touch-id/password.
 5. AthletiQ opens, and from now on it opens normally.
 
-```
+
 
 **Requirements:** macOS 15 Sequoia or later, on an Apple Silicon or Intel Mac.
 
