@@ -26,11 +26,26 @@ struct GameView: View {
 
     private var homeFirst: Bool { path.hasPrefix("soccer") || path.hasPrefix("rugby") }
 
+    /// The favourite team in this game, if any.
+    private func favoriteSide(_ g: Game) -> String? {
+        let favIDs = Set(Favorites.shared.teams.map(\.key.id))
+        if favIDs.contains(g.home.team.id) { return g.home.team.id }
+        if favIDs.contains(g.away.team.id) { return g.away.team.id }
+        return nil
+    }
+
     var body: some View {
         Page {
             if let d = model.detail {
+                if let fav = favoriteSide(d.game), d.game.state == .post {
+                    ResultBanner(game: d.game, teamID: fav, size: 54)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(Color.team(d.game.side(of: fav)?.team.colorHex, alt: d.game.side(of: fav)?.team.altColorHex))
+                        .appear(0)
+                }
                 scoreboard(d).appear(0)
                 if !d.periodLabels.isEmpty && !d.game.home.linescores.isEmpty { linescore(d).appear(1) }
+                LineupSection(detail: d).appear(2)
                 HStack(alignment: .top, spacing: 18) {
                     if !d.keyEvents.isEmpty { timeline(d).frame(maxWidth: .infinity).appear(2) }
                     if !d.teamStats.isEmpty { teamStats(d).frame(maxWidth: .infinity).appear(3) }
@@ -171,7 +186,7 @@ struct GameView: View {
     private func teamStats(_ d: GameDetail) -> some View {
         let (l, r) = sides(d)
         let lc = Color.team(l.team.colorHex, alt: l.team.altColorHex)
-        let rc = Color.team(r.team.colorHex, alt: r.team.altColorHex)
+        let rc = Color.kit(away: r.team, home: l.team)
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 TeamLogo(team: l.team, size: 22)

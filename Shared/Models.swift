@@ -270,6 +270,88 @@ struct GameDetail: Hashable, Sendable {
     var teamStats: [StatLine]
     var performers: [PerformerPair]
     var periodLabels: [String]
+    var lineups: [Lineup] = []
+
+    func lineup(for teamID: String) -> Lineup? { lineups.first { $0.teamID == teamID } }
+}
+
+// MARK: - Lineups
+
+enum LineupStyle: String, Hashable, Sendable, Codable { case pitch, court, groups }
+
+struct LineupPlayer: Hashable, Sendable, Identifiable, Codable {
+    let id: String
+    let name: String
+    let shortName: String
+    let jersey: String?
+    let position: String?       // abbreviation, e.g. "G", "CD-L", "F"
+    let positionName: String?   // e.g. "Center Left Defender"
+    let formationPlace: Int?
+    let subbedIn: Bool
+    let subbedOut: Bool
+    let headshot: URL?
+
+    /// Surname for compact labels ("Ødegaard").
+    var label: String {
+        let parts = name.split(separator: " ")
+        return parts.count > 1 ? String(parts.dropFirst().joined(separator: " ")) : name
+    }
+}
+
+struct LineupGroup: Hashable, Sendable, Identifiable, Codable {
+    let name: String
+    let players: [LineupPlayer]
+    var id: String { name }
+}
+
+struct Lineup: Hashable, Sendable, Codable {
+    let teamID: String
+    let style: LineupStyle
+    let formation: String?
+    let starters: [LineupPlayer]
+    let bench: [LineupPlayer]
+    var groups: [LineupGroup] = []
+
+    /// Football: outfield rows from back to front (left → right within a row), following the formation.
+    var pitchRows: [[LineupPlayer]] {
+        let keepers = starters.filter { ($0.positionName ?? "").lowercased().contains("goalkeeper") || $0.formationPlace == 1 }
+        let outfield = starters.filter { p in !keepers.contains(where: { $0.id == p.id }) }
+        let counts = (formation ?? "").split(separator: "-").compactMap { Int($0) }
+        let sorted = outfield.sorted { (Self.depth($0), Self.lateral($0)) < (Self.depth($1), Self.lateral($1)) }
+        var rows: [[LineupPlayer]] = [Array(keepers.prefix(1))]
+        if counts.reduce(0, +) == sorted.count {
+            var i = 0
+            for c in counts {
+                rows.append(Array(sorted[i..<i + c]).sorted { Self.lateral($0) < Self.lateral($1) })
+                i += c
+            }
+        } else {
+            // No usable formation: group by line.
+            let byDepth = Dictionary(grouping: sorted) { Self.depth($0) }
+            for d in byDepth.keys.sorted() { rows.append((byDepth[d] ?? []).sorted { Self.lateral($0) < Self.lateral($1) }) }
+        }
+        return rows.filter { !$0.isEmpty }
+    }
+
+    static func depth(_ p: LineupPlayer) -> Int {
+        let n = (p.positionName ?? "").lowercased()
+        if n.contains("goalkeeper") { return 0 }
+        if n.contains("defender") || n.contains("back") || n.contains("sweeper") { return 1 }
+        if n.contains("defensive midfielder") { return 2 }
+        if n.contains("attacking") || n.contains("winger") { return 4 }
+        if n.contains("midfielder") { return 3 }
+        if n.contains("forward") || n.contains("striker") { return 5 }
+        return 3
+    }
+
+    static func lateral(_ p: LineupPlayer) -> Double {
+        let n = (p.positionName ?? "").lowercased()
+        if n.contains("center left") || n.contains("centre left") { return -0.5 }
+        if n.contains("center right") || n.contains("centre right") { return 0.5 }
+        if n.contains("left") { return -1 }
+        if n.contains("right") { return 1 }
+        return 0
+    }
 }
 
 // MARK: - Individual sports

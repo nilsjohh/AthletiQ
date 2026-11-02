@@ -681,7 +681,81 @@ struct RawBoxTeam: Decodable {
 
 struct RawBox: Decodable {
     let teams: [RawBoxTeam]?
-    init(from d: Decoder) throws { teams = try Fields(d).get([RawBoxTeam].self, "teams") }
+    let players: [RawBoxPlayers]?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        teams = f.get([RawBoxTeam].self, "teams"); players = f.get([RawBoxPlayers].self, "players")
+    }
+}
+
+struct RawBoxPlayers: Decodable {
+    let team: RawTeam?
+    let statistics: [RawBoxPlayerGroup]?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        team = f.get(RawTeam.self, "team"); statistics = f.get([RawBoxPlayerGroup].self, "statistics")
+    }
+}
+
+struct RawBoxPlayerGroup: Decodable {
+    let name: String?
+    let athletes: [RawBoxAthlete]?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        name = f.str("name"); athletes = f.get([RawBoxAthlete].self, "athletes")
+    }
+}
+
+struct RawBoxAthlete: Decodable {
+    let starter: Bool?
+    let athlete: RawLineupAthlete?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        starter = f.bool("starter"); athlete = f.get(RawLineupAthlete.self, "athlete")
+    }
+}
+
+struct RawLineupAthlete: Decodable {
+    let id, displayName, shortName, jersey: String?
+    let position: RawText?
+    let headshot: RawHref?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        id = f.str("id"); displayName = f.str("displayName"); shortName = f.str("shortName"); jersey = f.str("jersey")
+        position = f.get(RawText.self, "position"); headshot = f.get(RawHref.self, "headshot")
+    }
+}
+
+struct RawLineupEntry: Decodable {
+    let starter, subbedIn, subbedOut: Bool?
+    let jersey: String?
+    let formationPlace: Int?
+    let athlete: RawLineupAthlete?
+    let position: RawText?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        starter = f.bool("starter"); subbedIn = f.bool("subbedIn"); subbedOut = f.bool("subbedOut")
+        jersey = f.str("jersey"); formationPlace = f.int("formationPlace")
+        athlete = f.get(RawLineupAthlete.self, "athlete"); position = f.get(RawText.self, "position")
+    }
+    var player: LineupPlayer? {
+        guard let a = athlete, let id = a.id, let n = a.displayName else { return nil }
+        return LineupPlayer(id: id, name: n, shortName: a.shortName ?? n, jersey: jersey ?? a.jersey,
+                            position: position?.abbreviation, positionName: position?.displayName,
+                            formationPlace: formationPlace, subbedIn: subbedIn ?? false, subbedOut: subbedOut ?? false,
+                            headshot: a.headshot?.url)
+    }
+}
+
+struct RawRosterBlock: Decodable {
+    let team: RawTeam?
+    let formation: String?
+    let roster: [RawLineupEntry]?
+    init(from d: Decoder) throws {
+        let f = try Fields(d)
+        team = f.get(RawTeam.self, "team"); formation = f.str("formation") ?? f.get(RawText.self, "formation")?.text
+        roster = f.get([RawLineupEntry].self, "roster")
+    }
 }
 
 struct RawTeamLeaders: Decodable {
@@ -710,8 +784,10 @@ struct RawSummary: Decodable {
     let boxscore: RawBox?
     let leaders: [RawTeamLeaders]?
     let venueName: String?
+    let rosters: [RawRosterBlock]?
     init(from d: Decoder) throws {
         let f = try Fields(d)
+        rosters = f.get([RawRosterBlock].self, "rosters")
         header = f.get(RawSummaryHeader.self, "header"); keyEvents = f.get([RawKeyEvent].self, "keyEvents")
         scoringPlays = f.get([RawKeyEvent].self, "scoringPlays"); boxscore = f.get(RawBox.self, "boxscore")
         leaders = f.get([RawTeamLeaders].self, "leaders")

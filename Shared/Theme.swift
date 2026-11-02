@@ -27,6 +27,30 @@ extension Color {
     }
 }
 
+extension Color {
+    static func rgb(_ hex: String?) -> (Double, Double, Double)? {
+        guard var s = hex, s.count >= 6 else { return nil }
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard let v = UInt32(s, radix: 16) else { return nil }
+        return (Double((v >> 16) & 0xff) / 255, Double((v >> 8) & 0xff) / 255, Double(v & 0xff) / 255)
+    }
+
+    static func distance(_ a: String?, _ b: String?) -> Double {
+        guard let x = rgb(a), let y = rgb(b) else { return 1 }
+        return ((x.0 - y.0) * (x.0 - y.0) + (x.1 - y.1) * (x.1 - y.1) + (x.2 - y.2) * (x.2 - y.2)).squareRoot()
+    }
+
+    /// Kit colour for the away side that stays distinguishable from the home side.
+    static func kit(away: TeamInfo, home: TeamInfo) -> Color {
+        let homeHex = home.colorHex
+        if distance(away.colorHex, homeHex) > 0.35 { return team(away.colorHex, alt: away.altColorHex) }
+        if let alt = away.altColorHex, distance(alt, homeHex) > 0.35, let l = rgb(alt), (0.2126 * l.0 + 0.7152 * l.1 + 0.0722 * l.2) < 0.8 {
+            return Color(hex: alt)
+        }
+        return Color(hex: "1C1C1E")
+    }
+}
+
 enum Thumb {
     static func cgImage(_ data: Data, maxPixel: Int) -> CGImage? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }

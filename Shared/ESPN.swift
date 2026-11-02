@@ -151,7 +151,50 @@ enum ESPN {
         let periods = max(game.home.linescores.count, game.away.linescores.count)
         let labels = (0..<periods).map { periodName(path, $0 + 1) }
         return GameDetail(game: game, keyEvents: events, teamStats: Array(stats.prefix(14)),
-                          performers: Array(performers.prefix(6)), periodLabels: labels)
+                          performers: Array(performers.prefix(6)), periodLabels: labels,
+                          lineups: lineups(raw, path: path))
+    }
+
+    /// Football: formation + XI + subs. Basketball: starting five + bench. Hockey: forwards/defence/goalies.
+    static func lineups(_ raw: RawSummary, path: String) -> [Lineup] {
+        if let rosters = raw.rosters, !rosters.isEmpty {
+            return rosters.compactMap { r in
+                guard let id = r.team?.id else { return nil }
+                let entries = r.roster ?? []
+                let starters = entries.filter { $0.starter == true }.compactMap(\.player)
+                let bench = entries.filter { $0.starter != true }.compactMap(\.player)
+                guard !starters.isEmpty else { return nil }
+                return Lineup(teamID: id, style: path.hasPrefix("soccer") ? .pitch : .groups, formation: r.formation,
+                              starters: starters, bench: bench)
+            }
+        }
+        guard let teams = raw.boxscore?.players else { return [] }
+        return teams.compactMap { t in
+            guard let id = t.team?.id, let groups = t.statistics, !groups.isEmpty else { return nil }
+            func player(_ a: RawBoxAthlete) -> LineupPlayer? {
+                guard let x = a.athlete, let pid = x.id, let n = x.displayName else { return nil }
+                return LineupPlayer(id: pid, name: n, shortName: x.shortName ?? n, jersey: x.jersey,
+                                    position: x.position?.abbreviation, positionName: x.position?.displayName,
+                                    formationPlace: nil, subbedIn: false, subbedOut: false, headshot: x.headshot?.url)
+            }
+            if path.hasPrefix("basketball") {
+                let all = groups[0].athletes ?? []
+                let starters = all.filter { $0.starter == true }.compactMap(player)
+                guard starters.count >= 5 else { return nil }
+                return Lineup(teamID: id, style: .court, formation: nil, starters: starters,
+                              bench: all.filter { $0.starter != true }.compactMap(player))
+            }
+            if path.hasPrefix("hockey") {
+                let named: [(String, String)] = [("forwards", "Forwards"), ("defenses", "Defence"), ("goalies", "Goalies")]
+                let out = named.compactMap { key, title -> LineupGroup? in
+                    let ps = (groups.first { $0.name == key }?.athletes ?? []).compactMap(player)
+                    return ps.isEmpty ? nil : LineupGroup(name: title, players: ps)
+                }
+                guard !out.isEmpty else { return nil }
+                return Lineup(teamID: id, style: .groups, formation: nil, starters: [], bench: [], groups: out)
+            }
+            return nil
+        }
     }
 
     static func periodName(_ path: String, _ n: Int) -> String {

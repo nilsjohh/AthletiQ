@@ -97,10 +97,19 @@ final class Favorites {
 struct RootView: View {
     @Bindable private var router = Router.shared
 
+    private var profile: ProfileState { ProfileState.shared }
+
     var body: some View {
-        NavigationStack(path: $router.path) {
-            HomeView(selection: .constant(.home))
-                .navigationDestination(for: Route.self) { destination($0) }
+        ZStack {
+            NavigationStack(path: $router.path) {
+                HomeView(selection: .constant(.home))
+                    .navigationDestination(for: Route.self) { destination($0) }
+            }
+            if profile.isPresented {
+                QProfileView()
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 1.04)), removal: .opacity.combined(with: .scale(scale: 0.96))))
+                    .zIndex(1)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {

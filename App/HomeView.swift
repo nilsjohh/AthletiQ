@@ -64,7 +64,12 @@ final class HomeModel {
     var games: [Game] = []
     var events: [BigEvent] = []
     var favoriteFeeds: [String: TeamFeed] = [:]
+    var gamedays: [Gameday] = []
     var loaded = false
+    /// How long a finished favourite game stays in the Gameday section.
+    nonisolated(unsafe) static var finishedWindow: TimeInterval = 12 * 3600
+
+    var hasLive: Bool { games.contains { $0.state == .live } || gamedays.contains { $0.game.state == .live } }
 
     static let featured = ["soccer/eng.1", "soccer/esp.1", "soccer/uefa.champions", "soccer/ita.1", "soccer/ger.1",
                            "basketball/nba", "football/nfl", "hockey/nhl", "baseball/mlb"]
@@ -91,8 +96,40 @@ final class HomeModel {
         games = all.filter { $0.state == .live || Calendar.current.isDateInToday($0.date) || ($0.state == .post && now.timeIntervalSince($0.date) < 14 * 3600) }
             .sorted { (rank($0), $0.date) < (rank($1), $1.date) }
         events = await eventsTask
-        favoriteFeeds = await feedsTask
+        let feeds = await feedsTask
+        favoriteFeeds = feeds
+        gamedays = await loadGamedays(favorites.teams, feeds: feeds)
         loaded = true
+    }
+
+    /// Favourite teams playing today (upcoming, live or just finished), with full match detail.
+    private func loadGamedays(_ favs: [FavoriteTeam], feeds: [String: TeamFeed]) async -> [Gameday] {
+        let cal = Calendar.current, now = Date()
+        var picks: [(FavoriteTeam, Game, TeamFeed)] = []
+        var seen = Set<String>()
+        for fav in favs {
+            guard let feed = feeds[fav.id] else { continue }
+            let game = feed.live
+                ?? feed.upcoming.first { cal.isDateInToday($0.date) }
+                ?? feed.results.first { now.timeIntervalSince($0.date) < Self.finishedWindow }
+            guard let g = game, seen.insert(g.id).inserted else { continue }
+            picks.append((fav, g, feed))
+        }
+        let details = await withTaskGroup(of: (String, GameDetail?).self) { group in
+            for (_, g, _) in picks {
+                guard let path = g.leaguePath else { continue }
+                group.addTask { (g.id, await ESPN.summary(path, id: g.id)) }
+            }
+            var out: [String: GameDetail] = [:]
+            for await (id, d) in group { if let d { out[id] = d } }
+            return out
+        }
+        return picks.map { fav, g, feed in
+            var game = g
+            if let fresh = details[g.id]?.game { game.state = fresh.state; game.home = fresh.home; game.away = fresh.away
+                game.detail = fresh.detail; game.shortDetail = fresh.shortDetail; game.completed = fresh.completed }
+            return Gameday(fav: fav, game: game, detail: details[g.id], feed: feed)
+        }.sorted { ($0.game.state == .live ? 0 : 1, $0.game.date) < ($1.game.state == .live ? 0 : 1, $1.game.date) }
     }
 
     private func rank(_ g: Game) -> Int { g.state == .live ? 0 : (g.state == .pre ? 1 : 2) }
@@ -102,26 +139,26 @@ final class HomeModel {
         var out: [BigEvent] = []
         await withTaskGroup(of: [BigEvent].self) { g in
             for l in Catalog.leagues where l.playoffMonths.contains(month) {
-                g.addTask { if let b = await ESPN.bracket(l), !b.rounds.isEmpty { return [.playoffs(l, b)] }; return [] }
+                g.addTask { if let b = await ESPN.bracket(l), b.isLive { return [.playoffs(l, b)] }; return [] }
             }
             if let ufc = Catalog.league("mma/ufc") {
                 g.addTask {
                     let cards = await ESPN.fightCards(ufc)
-                    let next = cards.first { $0.state != .post && $0.date > Date().addingTimeInterval(-12 * 3600) }
+                    let next = cards.first { $0.state != .post && $0.date > Date().addingTimeInterval(-12 * 3600) && $0.date < Date().addingTimeInterval(21 * 86400) }
                     return next.map { [.fight(ufc, $0)] } ?? []
                 }
             }
             if let f1 = Catalog.league("racing/f1") {
                 g.addTask {
                     let races = await ESPN.raceSeason(f1)
-                    let next = races.first { $0.state != .post } ?? races.last
+                    let next = races.first { $0.state != .post && $0.date < Date().addingTimeInterval(21 * 86400) }
                     return next.map { [.race(f1, $0)] } ?? []
                 }
             }
             if let pga = Catalog.league("golf/pga") {
                 g.addTask {
                     let t = await ESPN.tournaments(pga)
-                    guard let e = t.current.first, let gt = e.golfTournament() else { return [] }
+                    guard let e = t.current.first, let gt = e.golfTournament(), gt.state != .post else { return [] }
                     return [.golf(pga, gt, e.date ?? "")]
                 }
             }
@@ -160,6 +197,15 @@ struct HomeView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 175), spacing: 14)], spacing: 14) {
                     ForEach(Array(SportID.allCases.enumerated()), id: \.element) { i, s in
                         SportTile(sport: s) { router.push(.sport(s)) }.appear(i)
+                    }
+                }
+            }
+
+            if !model.gamedays.isEmpty {
+                VStack(alignment: .leading, spacing: 16) {
+                    SectionTitle("Gameday")
+                    ForEach(Array(model.gamedays.enumerated()), id: \.element.id) { i, d in
+                        GamedayCard(day: d).appear(i + 1)
                     }
                 }
             }
@@ -218,7 +264,7 @@ struct HomeView: View {
 
         }
         .refreshing(id: "home-\(favorites.teams.count)-\(favorites.leagues.count)",
-                    every: { model.games.contains { $0.state == .live } ? 30 : 180 }) {
+                    every: { model.hasLive ? 30 : 180 }) {
             await model.refresh(favorites: favorites)
         }
     }
@@ -229,6 +275,14 @@ struct HomeView: View {
                 Wordmark(size: 38)
             }
             Spacer()
+            Button { ProfileState.shared.open() } label: {
+                Label("Your Q Profile", systemImage: "person.crop.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Capsule().fill(AQ.fill))
+                    .overlay(Capsule().strokeBorder(AQ.stroke))
+            }
+            .buttonStyle(PressableStyle(hoverScale: 1.05, pressScale: 0.94))
         }
         .padding(.top, 6)
     }
@@ -525,4 +579,12 @@ struct LeagueTile: View {
         }
         .buttonStyle(PressableStyle(hoverScale: 1.025))
     }
+}
+
+struct Gameday: Identifiable {
+    let fav: FavoriteTeam
+    let game: Game
+    let detail: GameDetail?
+    let feed: TeamFeed
+    var id: String { game.id }
 }

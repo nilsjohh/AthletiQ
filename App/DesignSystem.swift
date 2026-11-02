@@ -95,6 +95,14 @@ struct HScroll<Content: View>: View {
     }
 }
 
+/// Vertical scroller that lays out flat when rendering offscreen.
+struct VScroll<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        if Snapshot.enabled { content().frame(maxHeight: .infinity, alignment: .top).clipped() } else { ScrollView { content() } }
+    }
+}
+
 // MARK: - Palette
 
 enum AQ {
