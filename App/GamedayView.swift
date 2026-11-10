@@ -22,13 +22,24 @@ struct GamedayCard: View {
         Button {
             if let p = game.leaguePath { router.push(.game(path: p, id: game.id)) }
         } label: {
-            HStack(spacing: 26) {
-                headline.frame(width: 300, alignment: .leading)
-                matchup.frame(maxWidth: .infinity)
-                sidePanel.frame(width: 300)
+            Group {
+                if Device.isPhone {
+                    VStack(alignment: .leading, spacing: 14) {
+                        headline
+                        matchup.frame(maxWidth: .infinity)
+                        sidePanel
+                    }
+                    .padding(16)
+                } else {
+                    HStack(spacing: 26) {
+                        headline.frame(width: 300, alignment: .leading)
+                        matchup.frame(maxWidth: .infinity)
+                        sidePanel.frame(width: 300)
+                    }
+                    .padding(.horizontal, 26).padding(.vertical, 20)
+                    .frame(height: 200)
+                }
             }
-            .padding(.horizontal, 26).padding(.vertical, 20)
-            .frame(height: 200)
             .frame(maxWidth: .infinity)
             .background(background)
             .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -58,15 +69,15 @@ struct GamedayCard: View {
             statusChip
             Spacer(minLength: 0)
             if game.state == .post {
-                ResultBanner(game: game, teamID: favID, size: 40)
+                ResultBanner(game: game, teamID: favID, size: ph(40, 34))
                     .shadow(color: .black.opacity(0.3), radius: 8)
             } else {
-                Text(day.fav.name).font(.system(size: 30, weight: .black)).lineLimit(1).minimumScaleFactor(0.6)
+                Text(day.fav.name).font(.system(size: ph(30, 24), weight: .black)).lineLimit(1).minimumScaleFactor(0.6)
             }
             Text([game.note ?? game.competition, game.venue].compactMap { $0 }.joined(separator: " · "))
                 .font(.system(size: 12, weight: .semibold)).opacity(0.8).lineLimit(2)
         }
-        .frame(maxHeight: .infinity, alignment: .leading)
+        .frame(maxHeight: Device.isPhone ? nil : .infinity, alignment: .leading)
     }
 
     private var statusChip: some View {
@@ -91,29 +102,29 @@ struct GamedayCard: View {
             VStack(spacing: 4) {
                 if game.hasScore {
                     Text("\(left.score ?? "0") – \(right.score ?? "0")")
-                        .font(.system(size: 50, weight: .heavy, design: .rounded))
+                        .font(.system(size: ph(50, 38), weight: .heavy, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .shadow(color: .black.opacity(0.3), radius: 8)
                         .lineLimit(1).minimumScaleFactor(0.6)
                 } else {
-                    Text(Fmt.time(game.date)).font(.system(size: 46, weight: .heavy, design: .rounded)).monospacedDigit()
+                    Text(Fmt.time(game.date)).font(.system(size: ph(46, 34), weight: .heavy, design: .rounded)).monospacedDigit()
                 }
                 Text(statusLine).font(.system(size: 13, weight: .bold))
                     .foregroundStyle(game.state == .live ? Color(hex: "FF6B60") : .white.opacity(0.85))
                     .lineLimit(1)
             }
-            .frame(minWidth: 150)
+            .frame(minWidth: ph(150, 110))
             team(right)
         }
     }
 
     private func team(_ s: Side) -> some View {
         VStack(spacing: 8) {
-            FloatingCrest(team: s.team, size: 70, glow: Color.team(s.team.colorHex, alt: s.team.altColorHex))
+            FloatingCrest(team: s.team, size: ph(70, 52), glow: Color.team(s.team.colorHex, alt: s.team.altColorHex))
             Text(s.team.shortName).font(.system(size: 14, weight: s.team.id == favID ? .black : .bold)).lineLimit(1)
         }
-        .frame(width: 120)
+        .frame(width: ph(120, 88))
         .opacity(game.isLoser(s) ? 0.75 : 1)
     }
 
@@ -157,7 +168,7 @@ struct GamedayCard: View {
             .opacity(0.85)
         }
         .padding(14)
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: Device.isPhone ? nil : .infinity)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.black.opacity(0.25)))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(.white.opacity(0.1)))
     }

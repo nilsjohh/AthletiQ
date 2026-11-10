@@ -136,7 +136,7 @@ struct GameRow: View {
                     Text(Fmt.day(game.date)).font(.system(size: 13, weight: .semibold))
                     Text(game.note ?? game.competition ?? "").font(.system(size: 11)).foregroundStyle(AQ.tertiary).lineLimit(1)
                 }
-                .frame(width: 140, alignment: .leading)
+                .frame(width: ph(140, 76), alignment: .leading)
                 TeamLogo(team: opp?.team, size: 26)
                 HStack(spacing: 4) {
                     Text(me?.isHome == true ? "vs" : "@").font(.system(size: 12, weight: .medium)).foregroundStyle(AQ.tertiary)
@@ -233,7 +233,7 @@ struct MatchSpotlight: View {
                     Label(v, systemImage: "mappin.and.ellipse").font(.caption).foregroundStyle(AQ.tertiary)
                 }
             }
-            .padding(24)
+            .padding(ph(24, 16))
             .background(
                 ZStack {
                     LinearGradient(colors: [Color.team(game.home.team.colorHex, alt: game.home.team.altColorHex).opacity(0.35), .clear, Color.team(game.away.team.colorHex, alt: game.away.team.altColorHex).opacity(0.35)],
@@ -257,7 +257,7 @@ struct MatchSpotlight: View {
         if game.hasScore {
             VStack(spacing: 4) {
                 Text("\(left.score ?? "0")  –  \(right.score ?? "0")")
-                    .font(.system(size: 56, weight: .heavy, design: .rounded))
+                    .font(.system(size: ph(56, 36), weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .contentTransition(.numericText())
                 Text(game.state == .live ? game.detail : (game.seriesSummary ?? "Full time"))
@@ -267,7 +267,7 @@ struct MatchSpotlight: View {
         } else {
             VStack(spacing: 4) {
                 Text(Fmt.time(game.date))
-                    .font(.system(size: 50, weight: .heavy, design: .rounded)).monospacedDigit()
+                    .font(.system(size: ph(50, 34), weight: .heavy, design: .rounded)).monospacedDigit()
                 Text(game.date, format: .relative(presentation: .named))
                     .font(.callout.weight(.medium)).foregroundStyle(AQ.secondary)
             }
@@ -276,12 +276,12 @@ struct MatchSpotlight: View {
 
     private func column(_ side: Side) -> some View {
         VStack(spacing: 10) {
-            TeamLogo(team: side.team, size: 82)
+            TeamLogo(team: side.team, size: ph(82, 52))
                 .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
             TeamLink(team: side.team, path: game.leaguePath, font: .system(size: 15, weight: side.team.id == teamID ? .heavy : .semibold))
             Text(side.isHome ? "Home" : "Away").font(.caption).foregroundStyle(AQ.tertiary)
         }
-        .frame(width: 190)
+        .frame(width: ph(190, 96))
     }
 }
 
@@ -299,7 +299,14 @@ struct StandingsTable: View {
         if let n = compactWindow, let h = highlight { return group.window(around: h, count: n) }
         return group.rows
     }
-    private var columns: [StandingColumn] { StandingColumn.visible(for: league.tableStyle, rows: group.rows) }
+    private var columns: [StandingColumn] {
+        let all = StandingColumn.visible(for: league.tableStyle, rows: group.rows)
+        guard Device.isPhone else { return all }
+        // Phone: the key columns only.
+        let keys = Set(StandingColumn.compact(for: league.tableStyle).map(\.key))
+        let picked = all.filter { keys.contains($0.key) }
+        return picked.isEmpty ? Array(all.prefix(3)) : picked
+    }
 
     private var legend: [(String, String)] {
         var seen = Set<String>()

@@ -40,8 +40,6 @@ struct QProfileView: View {
 
     var body: some View {
         ZStack {
-            AQ.bg.ignoresSafeArea()
-            AuroraBackground()
             VStack(spacing: 0) {
                 header
                 ZStack {
@@ -54,6 +52,12 @@ struct QProfileView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 footer
             }
+        }
+        // Background layers never affect layout (the glows are wider than a phone).
+        .background {
+            ZStack { AQ.bg; AuroraBackground() }
+                .clipped()
+                .ignoresSafeArea()
         }
         .onAppear {
             for t in Favorites.shared.teams {
@@ -95,7 +99,7 @@ struct QProfileView: View {
             Button("Skip") { save(); profile.finish() }.buttonStyle(LinkStyle()).font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(AQ.secondary)
         }
-        .padding(.horizontal, 30).padding(.top, 22).padding(.bottom, 8)
+        .padding(.horizontal, ph(30, 16)).padding(.top, 22).padding(.bottom, 8)
     }
 
     private var footer: some View {
@@ -119,14 +123,14 @@ struct QProfileView: View {
             } label: {
                 Text(step == .teams ? "Done" : (step == .welcome ? "Get started" : "Continue"))
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+                    .foregroundStyle(AQ.bg)
                     .padding(.horizontal, 28).padding(.vertical, 12)
                     .background(Capsule().fill(Color.primary))
             }
             .buttonStyle(PressableStyle(hoverScale: 1.05, pressScale: 0.94))
             .keyboardShortcut(.defaultAction)
         }
-        .padding(.horizontal, 30).padding(.vertical, 20)
+        .padding(.horizontal, ph(30, 16)).padding(.vertical, 20)
         .background(.ultraThinMaterial)
     }
 
@@ -135,14 +139,14 @@ struct QProfileView: View {
     private var welcome: some View {
         VStack(spacing: 22) {
             AppMark(size: 96).shadow(color: .black.opacity(0.3), radius: 24, y: 10).appear(0)
-            Text("Your Q Profile").font(.system(size: 52, weight: .heavy)).appear(1)
+            Text("Your Q Profile").font(.system(size: ph(52, 36), weight: .heavy)).appear(1)
             Text("Pick the leagues and teams you love.\nThey're pinned on Home, and your teams get a Gameday when they play.")
                 .font(.system(size: 17, weight: .medium)).foregroundStyle(AQ.secondary)
                 .multilineTextAlignment(.center).appear(2)
-            HStack(spacing: 14) {
+            HStack(spacing: ph(14, 8)) {
                 ForEach(Array([SportID.football, .basketball, .americanFootball, .hockey, .baseball, .motorsport].enumerated()), id: \.element) { i, s in
-                    Image(systemName: s.symbol).font(.system(size: 24, weight: .light))
-                        .frame(width: 58, height: 58)
+                    Image(systemName: s.symbol).font(.system(size: ph(24, 19), weight: .light))
+                        .frame(width: ph(58, 44), height: ph(58, 44))
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(hex: s.primaryHex).gradient))
                         .foregroundStyle(.white)
                         .appear(i + 3)
@@ -156,19 +160,19 @@ struct QProfileView: View {
     private var leaguePicker: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Choose your leagues").font(.system(size: 34, weight: .heavy))
+                Text("Choose your leagues").font(.system(size: ph(34, 28), weight: .heavy))
                 Text("Follow as many as you like.").foregroundStyle(AQ.secondary)
             }
-            .padding(.horizontal, 30)
+            .padding(.horizontal, ph(30, 16))
             HScroll {
                 HStack(spacing: 8) {
                     chip(nil, "All")
                     ForEach(SportID.allCases) { s in chip(s, s.name) }
                 }
-                .padding(.horizontal, 30)
+                .padding(.horizontal, ph(30, 16))
             }
             VScroll {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), spacing: 14)], spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(240)), spacing: 14)], spacing: 14) {
                     ForEach(Array(Catalog.leagues.filter { sportFilter == nil || $0.sport == sportFilter }.enumerated()), id: \.element.id) { i, l in
                         LeagueChoice(league: l, selected: leagues.contains(l.path)) {
                             withAnimation(AQ.spring) { if leagues.contains(l.path) { leagues.remove(l.path) } else { leagues.insert(l.path) } }
@@ -176,7 +180,7 @@ struct QProfileView: View {
                         .appear(i)
                     }
                 }
-                .padding(.horizontal, 30).padding(.vertical, 6)
+                .padding(.horizontal, ph(30, 16)).padding(.vertical, 6)
             }
         }
         .padding(.top, 10)
@@ -189,7 +193,7 @@ struct QProfileView: View {
                 if let s { Image(systemName: s.symbol).font(.system(size: 12, weight: .light)) }
                 Text(title).font(.system(size: 13, weight: .semibold))
             }
-            .foregroundStyle(on ? Color(nsColor: .windowBackgroundColor) : .primary)
+            .foregroundStyle(on ? AQ.bg : .primary)
             .padding(.horizontal, 14).padding(.vertical, 8)
             .background {
                 if on { Capsule().fill(Color.primary).matchedGeometryEffect(id: "chip", in: ns) }
@@ -201,20 +205,20 @@ struct QProfileView: View {
 
     private var teamPicker: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .bottom) {
+            AdaptiveStack(spacing: 12, alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Pick your teams").font(.system(size: 34, weight: .heavy))
+                    Text("Pick your teams").font(.system(size: ph(34, 28), weight: .heavy))
                     Text("Your teams get Gameday coverage on Home.").foregroundStyle(AQ.secondary)
                 }
-                Spacer()
+                if !Device.isPhone { Spacer() }
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundStyle(AQ.secondary)
-                    TextField("Search teams", text: $search).textFieldStyle(.plain).frame(width: 200)
+                    TextField("Search teams", text: $search).textFieldStyle(.plain).frame(width: Device.isPhone ? nil : 200)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .background(Capsule().fill(AQ.fill))
             }
-            .padding(.horizontal, 30)
+            .padding(.horizontal, ph(30, 16))
             VScroll {
                 VStack(alignment: .leading, spacing: 24) {
                     ForEach(teamLeagues) { l in
@@ -228,7 +232,7 @@ struct QProfileView: View {
                                 if teamLists[l.path] == nil {
                                     RoundedRectangle(cornerRadius: 16).fill(AQ.fill).frame(height: 70).shimmer()
                                 } else {
-                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) {
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: ph(150, 100)), spacing: 12)], spacing: 12) {
                                         ForEach(Array(list.enumerated()), id: \.element.id) { i, t in
                                             let k = "\(l.path)|\(t.id)"
                                             TeamChoice(team: t, selected: teams[k] != nil) {
@@ -242,7 +246,7 @@ struct QProfileView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 30).padding(.vertical, 6)
+                .padding(.horizontal, ph(30, 16)).padding(.vertical, 6)
             }
         }
         .padding(.top, 10)

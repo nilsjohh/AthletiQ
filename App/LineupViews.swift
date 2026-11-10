@@ -17,12 +17,12 @@ struct LineupSection: View {
                     FootballPitch(home: h, away: a, homeTeam: detail.game.home.team, awayTeam: detail.game.away.team, compact: compact)
                     if !compact { BenchLists(home: h, away: a, homeTeam: detail.game.home.team, awayTeam: detail.game.away.team) }
                 case .court:
-                    HStack(alignment: .top, spacing: 18) {
+                    AdaptiveStack {
                         CourtCard(lineup: a, team: detail.game.away.team)
                         CourtCard(lineup: h, team: detail.game.home.team)
                     }
                 case .groups:
-                    HStack(alignment: .top, spacing: 18) {
+                    AdaptiveStack {
                         GroupsCard(lineup: a, team: detail.game.away.team)
                         GroupsCard(lineup: h, team: detail.game.home.team)
                     }
@@ -55,12 +55,18 @@ struct FootballPitch: View {
             }
             GeometryReader { geo in
                 ZStack {
-                    PitchSurface()
+                    if vertical {
+                        PitchSurface().frame(width: geo.size.height, height: geo.size.width)
+                            .rotationEffect(.degrees(90))
+                            .frame(width: geo.size.width, height: geo.size.height)
+                    } else {
+                        PitchSurface()
+                    }
                     side(home, color: homeColor, size: geo.size, isHome: true)
                     side(away, color: awayColor, size: geo.size, isHome: false)
                 }
             }
-            .aspectRatio(compact ? 1.9 : 1.6, contentMode: .fit)
+            .aspectRatio(vertical ? 0.66 : (compact ? 1.9 : 1.6), contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.15)))
             .shadow(color: .black.opacity(0.25), radius: 18, y: 8)
@@ -77,7 +83,10 @@ struct FootballPitch: View {
         }
     }
 
-    /// Home attacks left → right; away attacks right → left.
+    /// iPhone: upright pitch, home at the bottom attacking up.
+    private var vertical: Bool { Device.isPhone }
+
+    /// Home attacks left → right (or bottom → top on iPhone); away the other way.
     private func side(_ lineup: Lineup, color: Color, size: CGSize, isHome: Bool) -> some View {
         let rows = lineup.pitchRows
         let n = max(rows.count - 1, 1)
@@ -85,11 +94,11 @@ struct FootballPitch: View {
             ForEach(Array(rows.enumerated()), id: \.offset) { ri, row in
                 ForEach(Array(row.enumerated()), id: \.element.id) { pi, p in
                     let depth = 0.05 + 0.40 * Double(ri) / Double(n)
-                    let x = isHome ? depth : 1 - depth
-                    // A team's left is the top of the screen when attacking right.
                     let slot = (Double(pi) + 1) / Double(row.count + 1)
-                    let y = isHome ? slot : 1 - slot
-                    PitchPlayer(player: p, color: color, compact: compact)
+                    // A team's left is the top of the screen when attacking right (the left edge when attacking up).
+                    let x = vertical ? (isHome ? slot : 1 - slot) : (isHome ? depth : 1 - depth)
+                    let y = vertical ? (isHome ? 1 - depth : depth) : (isHome ? slot : 1 - slot)
+                    PitchPlayer(player: p, color: color, compact: compact || vertical)
                         .position(x: x * size.width, y: y * size.height)
                         .scaleEffect(shown ? 1 : 0.2)
                         .opacity(shown ? 1 : 0)
@@ -168,7 +177,7 @@ struct PitchPlayer: View {
                 .padding(.horizontal, 5).padding(.vertical, 1.5)
                 .background(Capsule().fill(.black.opacity(hovering ? 0.55 : 0.35)))
         }
-        .frame(width: compact ? 84 : 100)
+        .frame(width: compact ? (Device.isPhone ? 66 : 84) : 100)
         .scaleEffect(hovering ? 1.15 : 1)
         .animation(AQ.spring, value: hovering)
         .onHover { hovering = $0 }
@@ -183,7 +192,7 @@ struct BenchLists: View {
     let awayTeam: TeamInfo
 
     var body: some View {
-        HStack(alignment: .top, spacing: 18) {
+        AdaptiveStack {
             list(home, homeTeam)
             list(away, awayTeam)
         }

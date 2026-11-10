@@ -18,24 +18,18 @@ final class LeagueLogoStore {
     }
 }
 
+/// League badge from TheSportsDB; the sport's symbol when there isn't one.
 struct LeagueLogo: View {
     let league: LeagueRef
     var size: CGFloat
-    @State private var url: URL?
-    init(league: LeagueRef, size: CGFloat) {
-        self.league = league; self.size = size
-        _url = State(initialValue: LeagueLogoStore.shared.cached(league.path))
-    }
     var body: some View {
-        Group {
-            if let url {
-                RemoteImage([url.absoluteString.contains("/500/") ? URL(string: url.absoluteString.replacingOccurrences(of: "/500/", with: "/500-dark/")) : nil, url], size: size)
-            } else {
-                Image(systemName: league.sport.symbol).font(.system(size: size * 0.5, weight: .bold)).foregroundStyle(.white.opacity(0.85))
-                    .frame(width: size, height: size)
-            }
+        let symbol = Image(systemName: league.sport.symbol).font(.system(size: size * 0.5, weight: .light)).foregroundStyle(.white.opacity(0.9))
+            .frame(width: size, height: size)
+        if let url = LogoBook.league(league.path, size: size) {
+            RemoteImage([url], size: size, fallback: AnyView(symbol))
+        } else {
+            symbol
         }
-        .task(id: league.path) { if url == nil, league.kind != .cricket { url = await LeagueLogoStore.shared.logo(league) } }
     }
 }
 
@@ -192,15 +186,6 @@ struct HomeView: View {
         Page {
             header.appear(0)
 
-            VStack(alignment: .leading, spacing: 14) {
-                SectionTitle("Sports")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 175), spacing: 14)], spacing: 14) {
-                    ForEach(Array(SportID.allCases.enumerated()), id: \.element) { i, s in
-                        SportTile(sport: s) { router.push(.sport(s)) }.appear(i)
-                    }
-                }
-            }
-
             if !model.gamedays.isEmpty {
                 VStack(alignment: .leading, spacing: 16) {
                     SectionTitle("Gameday")
@@ -227,10 +212,19 @@ struct HomeView: View {
             if !favorites.leagues.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {
                     SectionTitle("Your Leagues")
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 14)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(250)), spacing: 14)], spacing: 14) {
                         ForEach(Array(favorites.leagues.compactMap(Catalog.league).enumerated()), id: \.element.id) { i, l in
                             LeagueTile(league: l).appear(i)
                         }
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                SectionTitle("Sports")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: ph(175, 150)), spacing: ph(14, 10))], spacing: ph(14, 10)) {
+                    ForEach(Array(SportID.allCases.enumerated()), id: \.element) { i, s in
+                        SportTile(sport: s) { router.push(.sport(s)) }.appear(i)
                     }
                 }
             }
@@ -256,7 +250,7 @@ struct HomeView: View {
                 } else if model.games.isEmpty {
                     EmptyNote(text: "No games today in your leagues")
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 270), spacing: 14, alignment: .top)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(270)), spacing: 14, alignment: .top)], spacing: 14) {
                         ForEach(Array(model.games.prefix(24).enumerated()), id: \.element.id) { i, g in GameCard(game: g).appear(i) }
                     }
                 }
@@ -272,12 +266,13 @@ struct HomeView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 4) {
-                Wordmark(size: 38)
+                Wordmark(size: ph(38, 28))
             }
             Spacer()
             Button { ProfileState.shared.open() } label: {
                 Label("Your Q Profile", systemImage: "person.crop.circle")
-                    .font(.system(size: 13, weight: .semibold))
+                    .labelStyle(PhoneIconOnly())
+                    .font(.system(size: ph(13, 18), weight: .semibold))
                     .padding(.horizontal, 14).padding(.vertical, 8)
                     .background(Capsule().fill(AQ.fill))
                     .overlay(Capsule().strokeBorder(AQ.stroke))
@@ -301,7 +296,7 @@ struct SportTile: View {
                 SportPattern(kind: sport.pattern, opacity: hovering ? 0.22 : 0.13, lineWidth: 1.5)
                     .scaleEffect(hovering ? 1.08 : 1)
                 Image(systemName: sport.symbol)
-                    .font(.system(size: 40, weight: .light))
+                    .font(.system(size: ph(40, 30), weight: .light))
                     .symbolRenderingMode(.monochrome)
                     .foregroundStyle(.white.opacity(0.9))
                     .rotationEffect(.degrees(hovering ? -10 : 0))
@@ -316,7 +311,7 @@ struct SportTile: View {
                 }
                 .padding(14)
             }
-            .frame(height: 140)
+            .frame(height: ph(140, 118))
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(hovering ? 0.3 : 0.1)))
             .shadow(color: Color(hex: sport.primaryHex).opacity(hovering ? 0.55 : 0.2), radius: hovering ? 22 : 10, y: 8)
@@ -339,7 +334,7 @@ struct FavoriteTeamCard: View {
         Button { router.push(.team(fav.key)) } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    RemoteImage([fav.logo], size: 34, placeholder: "shield.fill")
+                    TeamLogo(team: feed?.info ?? TeamInfo(id: fav.key.id, abbreviation: String(fav.name.prefix(3)).uppercased(), name: fav.name, shortName: fav.name, colorHex: fav.colorHex, altColorHex: nil, logo: fav.logo), size: 34)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(fav.name).font(.system(size: 14, weight: .bold)).lineLimit(1)
                         Text(feed?.standingSummary ?? feed?.record ?? " ").font(.system(size: 11)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
@@ -513,12 +508,12 @@ struct SportView: View {
                 Hero(color: Color(hex: sport.primaryHex), pattern: sport.pattern, height: 200) {
                     HStack(spacing: 20) {
                         Image(systemName: sport.symbol)
-                            .font(.system(size: 46, weight: .light))
-                            .frame(width: 96, height: 96)
+                            .font(.system(size: ph(46, 32), weight: .light))
+                            .frame(width: ph(96, 64), height: ph(96, 64))
                             .background(Circle().fill(.white.opacity(0.14)))
                             .overlay(Circle().strokeBorder(.white.opacity(0.25)))
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(sport.name).font(.system(size: 42, weight: .heavy))
+                            Text(sport.name).font(.system(size: ph(42, 28), weight: .heavy)).lineLimit(1).minimumScaleFactor(0.6)
                             Text("\(sport.leagues.count) competitions").font(.title3.weight(.medium)).opacity(0.8)
                         }
                     }
@@ -541,7 +536,7 @@ struct SportView: View {
     }
 
     private func grid(_ leagues: [LeagueRef]) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 14)], spacing: 14) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(250)), spacing: 14)], spacing: 14) {
             ForEach(Array(leagues.enumerated()), id: \.element.id) { i, l in
                 LeagueTile(league: l).appear(i)
             }

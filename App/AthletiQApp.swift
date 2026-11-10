@@ -6,11 +6,14 @@ struct AthletiQApp: App {
     var body: some Scene {
         WindowGroup("AthletiQ") {
             RootView()
-                .frame(minWidth: 1040, minHeight: 700)
+                .preferredColorScheme(.dark)
+                .modifier(PlatformWindow())
                 .onAppear { WidgetCenter.shared.reloadAllTimelines() }
         }
+        #if os(macOS)
         .defaultSize(width: 1320, height: 900)
         .windowToolbarStyle(.unified(showsTitle: false))
+        #endif
     }
 }
 
@@ -125,7 +128,28 @@ struct RootView: View {
             }
         }
         .animation(AQ.spring, value: router.path.isEmpty)
+        #if DEBUG
+        .task { await openDebugRoute() }
+        #endif
     }
+
+    #if DEBUG
+    /// Screenshots only: `-AQRoute team:soccer/eng.1:359`, `game:soccer/eng.1:<id>`, `league:<path>`, `bracket:<path>`, `sport:<id>`.
+    private func openDebugRoute() async {
+        guard let r = UserDefaults.standard.string(forKey: "AQRoute") else { return }
+        let parts = r.split(separator: ":", maxSplits: 2).map(String.init)
+        try? await Task.sleep(for: .milliseconds(300))
+        switch parts.first {
+        case "team" where parts.count == 3: router.path = [.team(TeamKey(leaguePath: parts[1], id: parts[2]))]
+        case "game" where parts.count == 3: router.path = [.game(path: parts[1], id: parts[2])]
+        case "league" where parts.count >= 2: router.path = [.league(parts[1])]
+        case "bracket" where parts.count >= 2: router.path = [.bracket(parts[1])]
+        case "sport" where parts.count >= 2: if let s = SportID(rawValue: parts[1]) { router.path = [.sport(s)] }
+        case "profile": ProfileState.shared.open()
+        default: break
+        }
+    }
+    #endif
 
     @ViewBuilder private func destination(_ r: Route) -> some View {
         switch r {
@@ -182,5 +206,19 @@ struct QGlyph: Shape {
         tail.move(to: CGPoint(x: r.minX + w * 0.62, y: r.minY + w * 0.62))
         tail.addLine(to: CGPoint(x: r.minX + w * 0.98, y: r.minY + w * 0.98))
         return ring.union(tail.strokedPath(StrokeStyle(lineWidth: lw, lineCap: .round)))
+    }
+}
+
+/// Mac: minimum window size. iPhone: tell every screen to use its compact layout.
+struct PlatformWindow: ViewModifier {
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
+    func body(content: Content) -> some View {
+        #if os(macOS)
+        content.frame(minWidth: 1040, minHeight: 700)
+        #else
+        content.environment(\.isCompact, sizeClass == .compact)
+        #endif
     }
 }

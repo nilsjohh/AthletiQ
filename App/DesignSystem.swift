@@ -5,19 +5,19 @@ import SwiftUI
 @MainActor
 final class ImageStore {
     static let shared = ImageStore()
-    private var cache: [URL: NSImage] = [:]
+    private var cache: [URL: PlatformImage] = [:]
     private var misses: Set<URL> = []
-    private var inflight: [URL: Task<NSImage?, Never>] = [:]
+    private var inflight: [URL: Task<PlatformImage?, Never>] = [:]
 
-    func cached(_ url: URL) -> NSImage? { cache[url] }
+    func cached(_ url: URL) -> PlatformImage? { cache[url] }
 
-    func image(_ url: URL) async -> NSImage? {
+    func image(_ url: URL) async -> PlatformImage? {
         if let i = cache[url] { return i }
         if misses.contains(url) { return nil }
         if let t = inflight[url] { return await t.value }
-        let task = Task<NSImage?, Never> {
+        let task = Task<PlatformImage?, Never> {
             guard let cg = await Thumb.download(url, maxPixel: 320) else { return nil }
-            return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
+            return PlatformImage(cg: cg)
         }
         inflight[url] = task
         let result = await task.value
@@ -33,26 +33,31 @@ struct RemoteImage: View {
     var size: CGFloat
     var circular = false
     var placeholder: String? = nil
-    @State private var image: NSImage?
+    var fallback: AnyView? = nil
+    @State private var image: PlatformImage?
+    @State private var failed = false
 
-    init(_ urls: [URL?], size: CGFloat, circular: Bool = false, placeholder: String? = nil) {
+    init(_ urls: [URL?], size: CGFloat, circular: Bool = false, placeholder: String? = nil, fallback: AnyView? = nil) {
         self.urls = urls.compactMap { $0 }
         self.size = size
         self.circular = circular
         self.placeholder = placeholder
+        self.fallback = fallback
         _image = State(initialValue: self.urls.lazy.compactMap { ImageStore.shared.cached($0) }.first)
     }
 
     var body: some View {
         ZStack {
             if let image {
-                Image(nsImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: circular ? .fill : .fit)
                     .frame(width: size, height: size)
                     .clipShape(circular ? AnyShape(Circle()) : AnyShape(Rectangle()))
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            } else if failed, let fallback {
+                fallback
             } else if let placeholder {
                 Image(systemName: placeholder)
                     .font(.system(size: size * 0.42, weight: .semibold))
@@ -72,15 +77,42 @@ struct RemoteImage: View {
                     return
                 }
             }
+            failed = true
         }
     }
 }
 
+/// Team crest from TheSportsDB; a monogram in the team's colours when there's no badge.
 struct TeamLogo: View {
     let team: TeamInfo?
     var size: CGFloat
     var body: some View {
-        RemoteImage([team?.darkLogo, team?.logo], size: size, placeholder: "shield.fill")
+        if let url = LogoBook.team(team, size: size) {
+            RemoteImage([url], size: size, fallback: AnyView(MonogramBadge(team: team, size: size)))
+        } else {
+            MonogramBadge(team: team, size: size)
+        }
+    }
+}
+
+struct MonogramBadge: View {
+    let team: TeamInfo?
+    let size: CGFloat
+    var body: some View {
+        let c = Color.team(team?.colorHex, alt: team?.altColorHex)
+        let ring = Color.team(team?.altColorHex, fallback: .white)
+        let text = String((team?.abbreviation.isEmpty == false ? team!.abbreviation : String((team?.name ?? "?").prefix(3))).prefix(4)).uppercased()
+        ZStack {
+            Circle().fill(LinearGradient(colors: [c.mix(with: .white, by: 0.12), c.mix(with: .black, by: 0.25)], startPoint: .top, endPoint: .bottom))
+            Circle().strokeBorder(ring.opacity(0.85), lineWidth: max(1, size * 0.045))
+            Text(text)
+                .font(.system(size: size * (text.count > 3 ? 0.26 : 0.32), weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.5)
+                .padding(size * 0.12)
+        }
+        .frame(width: size * 0.9, height: size * 0.9)
+        .frame(width: size, height: size)
     }
 }
 
@@ -91,7 +123,7 @@ enum Snapshot { nonisolated(unsafe) static var enabled = false }
 struct HScroll<Content: View>: View {
     @ViewBuilder let content: () -> Content
     var body: some View {
-        if Snapshot.enabled { content().frame(maxWidth: .infinity, alignment: .leading).frame(width: 1180, alignment: .leading).clipped() } else { ScrollView(.horizontal, showsIndicators: false) { content() } }
+        if Snapshot.enabled { content().frame(maxWidth: .infinity, alignment: .leading).frame(width: Device.isPhone ? 361 : 1180, alignment: .leading).clipped() } else { ScrollView(.horizontal, showsIndicators: false) { content() } }
     }
 }
 
@@ -107,18 +139,18 @@ struct VScroll<Content: View>: View {
 
 enum AQ {
     /// Colour that follows the system light/dark appearance.
-    static func dyn(light: NSColor, dark: NSColor) -> Color {
-        Color(nsColor: NSColor(name: nil) { $0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light })
+    static func dyn(light: PlatformColor, dark: PlatformColor) -> Color {
+        Color(platformColor: dynamicColor(light: light, dark: dark))
     }
-    static let bg = dyn(light: NSColor(red: 0.953, green: 0.953, blue: 0.965, alpha: 1), dark: NSColor(red: 0.043, green: 0.043, blue: 0.051, alpha: 1))
-    static let card = dyn(light: .white, dark: NSColor(white: 1, alpha: 0.055))
-    static let cardHover = dyn(light: NSColor(white: 0.985, alpha: 1), dark: NSColor(white: 1, alpha: 0.085))
-    static let stroke = dyn(light: NSColor(white: 0, alpha: 0.07), dark: NSColor(white: 1, alpha: 0.08))
-    static let strokeTop = dyn(light: NSColor(white: 0, alpha: 0.06), dark: NSColor(white: 1, alpha: 0.12))
-    static let strokeBottom = dyn(light: NSColor(white: 0, alpha: 0.1), dark: NSColor(white: 1, alpha: 0.03))
-    static let fill = dyn(light: NSColor(white: 0, alpha: 0.05), dark: NSColor(white: 1, alpha: 0.06))
-    static let shadow = dyn(light: NSColor(white: 0, alpha: 0.06), dark: NSColor(white: 0, alpha: 0))
-    static let gold = dyn(light: NSColor(red: 0.72, green: 0.53, blue: 0.04, alpha: 1), dark: NSColor(red: 1, green: 0.84, blue: 0.31, alpha: 1))
+    static let bg = dyn(light: PlatformColor(red: 0.953, green: 0.953, blue: 0.965, alpha: 1), dark: PlatformColor(red: 0.043, green: 0.043, blue: 0.051, alpha: 1))
+    static let card = dyn(light: .white, dark: PlatformColor(white: 1, alpha: 0.055))
+    static let cardHover = dyn(light: PlatformColor(white: 0.985, alpha: 1), dark: PlatformColor(white: 1, alpha: 0.085))
+    static let stroke = dyn(light: PlatformColor(white: 0, alpha: 0.07), dark: PlatformColor(white: 1, alpha: 0.08))
+    static let strokeTop = dyn(light: PlatformColor(white: 0, alpha: 0.06), dark: PlatformColor(white: 1, alpha: 0.12))
+    static let strokeBottom = dyn(light: PlatformColor(white: 0, alpha: 0.1), dark: PlatformColor(white: 1, alpha: 0.03))
+    static let fill = dyn(light: PlatformColor(white: 0, alpha: 0.05), dark: PlatformColor(white: 1, alpha: 0.06))
+    static let shadow = dyn(light: PlatformColor(white: 0, alpha: 0.06), dark: PlatformColor(white: 0, alpha: 0))
+    static let gold = dyn(light: PlatformColor(red: 0.72, green: 0.53, blue: 0.04, alpha: 1), dark: PlatformColor(red: 1, green: 0.84, blue: 0.31, alpha: 1))
     static let secondary = Color.primary.opacity(0.6)
     static let tertiary = Color.primary.opacity(0.4)
     static let live = Color(hex: "FF3B30")
@@ -170,7 +202,7 @@ struct LinkStyle: ButtonStyle {
                 }
                 .animation(AQ.snappy, value: hovering)
                 .onHover { hovering = $0 }
-                .pointerStyle(.link)
+                .linkPointer()
         }
     }
 }
@@ -250,7 +282,7 @@ struct SectionTitle: View {
     }
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.system(size: 22, weight: .bold))
+            Text(title).font(.system(size: ph(22, 20), weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
             Spacer()
             if let trailing {
                 if let action {
@@ -352,9 +384,10 @@ struct TabBar<T: Hashable & Identifiable>: View {
                     withAnimation(AQ.spring) { selection = tab }
                 } label: {
                     Text(title(tab))
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: ph(13, 12.5), weight: .semibold))
+                        .lineLimit(1)
                         .foregroundStyle(selected ? selectedText : AQ.secondary)
-                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .padding(.horizontal, ph(16, 10)).padding(.vertical, 8)
                         .background {
                             if selected {
                                 Capsule().fill(accent).matchedGeometryEffect(id: "tab", in: ns)
@@ -433,10 +466,11 @@ struct Hero<Content: View>: View {
                     .padding(-10)
                     .mask(LinearGradient(colors: [.clear, .black, .black], startPoint: .leading, endPoint: .trailing))
             }
-            content().padding(30)
+            content().padding(ph(30, 18))
         }
-        .frame(height: height)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(height: Device.isPhone ? nil : height)
+        .frame(minHeight: Device.isPhone ? height * 0.7 : nil)
+        .clipShape(RoundedRectangle(cornerRadius: ph(28, 22), style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.1)))
         .shadow(color: color.opacity(0.35), radius: 30, y: 14)
         .foregroundStyle(.white)
@@ -455,11 +489,11 @@ struct Page<Content: View>: View {
         }
     }
     private var inner: some View {
-        VStack(alignment: .leading, spacing: 28) {
+        VStack(alignment: .leading, spacing: ph(28, 20)) {
             content()
             SiteFooter()
         }
-            .padding(.horizontal, 30).padding(.vertical, 24)
+            .padding(.horizontal, ph(30, 16)).padding(.vertical, ph(24, 12))
             .frame(maxWidth: 1240)
             .frame(maxWidth: .infinity)
     }

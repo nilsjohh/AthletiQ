@@ -26,11 +26,11 @@ struct LeagueHero: View {
 
     var body: some View {
         Hero(color: Color(hex: league.colorHex), secondary: Color(hex: league.sport.primaryHex), pattern: league.sport.pattern, height: 190) {
-            HStack(spacing: 22) {
-                LeagueLogo(league: league, size: 66)
-                    .frame(width: 96, height: 96)
-                    .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(.white.opacity(0.14)))
-                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(.white.opacity(0.2)))
+            HStack(spacing: ph(22, 14)) {
+                LeagueLogo(league: league, size: ph(66, 44))
+                    .frame(width: ph(96, 64), height: ph(96, 64))
+                    .background(RoundedRectangle(cornerRadius: ph(26, 18), style: .continuous).fill(.white.opacity(0.14)))
+                    .overlay(RoundedRectangle(cornerRadius: ph(26, 18), style: .continuous).strokeBorder(.white.opacity(0.2)))
                     .shadow(color: .black.opacity(0.3), radius: 14, y: 6)
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 6) {
@@ -38,8 +38,8 @@ struct LeagueHero: View {
                         Text(league.sport.name.uppercased())
                     }
                     .font(.system(size: 11, weight: .heavy)).tracking(1).opacity(0.75)
-                    Text(league.name).font(.system(size: 38, weight: .heavy)).lineLimit(1).minimumScaleFactor(0.6)
-                    if let subtitle { Text(subtitle).font(.title3.weight(.medium)).opacity(0.8) }
+                    Text(league.name).font(.system(size: ph(38, 26), weight: .heavy)).lineLimit(2).minimumScaleFactor(0.6)
+                    if let subtitle { Text(subtitle).font(.system(size: ph(20, 14), weight: .medium)).opacity(0.8).lineLimit(1) }
                 }
                 Spacer()
                 FavoriteButton(isOn: favorites.isFavorite(league: league.path)) { favorites.toggle(league: league.path) }
@@ -160,7 +160,7 @@ struct TeamLeagueView: View {
                 .sorted { ($0.state == .live ? 0 : 1, $0.date) < ($1.state == .live ? 0 : 1, $1.date) }
             VStack(alignment: .leading, spacing: 14) {
                 SectionTitle(Fmt.day(selected), trailing: "\(list.count) \(list.count == 1 ? "game" : "games")")
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14, alignment: .top)], spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(280)), spacing: 14, alignment: .top)], spacing: 14) {
                     ForEach(Array(list.enumerated()), id: \.element.id) { i, g in GameCard(game: g).appear(i) }
                 }
             }
@@ -187,7 +187,7 @@ struct TeamLeagueView: View {
         } else if model.leaders.isEmpty {
             EmptyNote(text: "Stats aren't available for this competition", symbol: "chart.bar")
         } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 320), spacing: 18, alignment: .top)], spacing: 18) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(320)), spacing: 18, alignment: .top)], spacing: 18) {
                 ForEach(Array(model.leaders.enumerated()), id: \.element.id) { i, c in
                     LeaderCard(category: c, path: league.path, limit: league.isSoccer ? 10 : 5, accent: accent).appear(i)
                 }
@@ -209,7 +209,7 @@ struct TeamLeagueView: View {
         if model.teams.isEmpty {
             LoadingState(label: "Loading teams")
         } else {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(200)), spacing: 12)], spacing: 12) {
                 ForEach(Array(model.teams.enumerated()), id: \.element.id) { i, t in
                     TeamTile(team: t, path: league.path).appear(i)
                 }

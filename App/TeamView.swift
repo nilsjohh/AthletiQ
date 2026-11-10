@@ -166,7 +166,7 @@ struct TeamView: View {
             .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .bottom)), removal: .opacity))
             SiteFooter()
         }
-        .padding(.horizontal, 30).padding(.vertical, 24)
+        .padding(.horizontal, ph(30, 16)).padding(.vertical, ph(24, 12))
         .frame(maxWidth: 1240)
         .frame(maxWidth: .infinity)
     }
@@ -175,8 +175,8 @@ struct TeamView: View {
 
     private var hero: some View {
         Hero(color: color, secondary: color2, pattern: league?.sport.pattern, height: 260) {
-            HStack(spacing: 28) {
-                FloatingCrest(team: info, size: 130, glow: color2)
+            HStack(spacing: ph(28, 14)) {
+                FloatingCrest(team: info, size: ph(130, 72), glow: color2)
                 VStack(alignment: .leading, spacing: 9) {
                     HStack(spacing: 8) {
                         Image(systemName: league?.sport.symbol ?? "sportscourt").fontWeight(.light)
@@ -184,11 +184,11 @@ struct TeamView: View {
                         ColourSwatches(primary: color, secondary: color2)
                     }
                     .font(.system(size: 11, weight: .heavy)).tracking(1).opacity(0.85)
-                    Text(info?.name ?? " ").font(.system(size: 46, weight: .heavy)).lineLimit(1).minimumScaleFactor(0.5)
-                    HStack(spacing: 18) {
+                    Text(info?.name ?? " ").font(.system(size: ph(46, 26), weight: .heavy)).lineLimit(ph(1, 2)).minimumScaleFactor(0.5)
+                    HStack(spacing: ph(18, 12)) {
                         if let r = model.feed?.record, !r.isEmpty { stat(r, "Record") }
                         if let s = model.feed?.standingSummary { stat(s, "Standing") }
-                        if let v = model.feed?.venue { stat(v, "Home ground") }
+                        if let v = model.feed?.venue, !Device.isPhone { stat(v, "Home ground") }
                     }
                     form
                 }
@@ -204,7 +204,7 @@ struct TeamView: View {
 
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(value).font(.system(size: 14, weight: .bold)).lineLimit(1)
+            Text(value).font(.system(size: ph(14, 12.5), weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
             Text(label.uppercased()).font(.system(size: 9, weight: .heavy)).tracking(0.8).opacity(0.65)
         }
     }
@@ -212,7 +212,7 @@ struct TeamView: View {
     @ViewBuilder private var form: some View {
         if let results = model.feed?.results, !results.isEmpty {
             HStack(spacing: 5) {
-                Text("FORM").font(.system(size: 9, weight: .heavy)).tracking(0.8).opacity(0.65).padding(.trailing, 3)
+                Text("FORM").font(.system(size: 9, weight: .heavy)).tracking(0.8).opacity(0.65).fixedSize().padding(.trailing, 3)
                 ForEach(Array(results.prefix(5).reversed().enumerated()), id: \.element.id) { i, g in
                     if let o = g.outcome(for: key.id) { OutcomeBadge(outcome: o, size: 22).appear(i + 2) }
                 }
@@ -242,18 +242,18 @@ struct TeamView: View {
             seasonTiles(feed, ins)
         }
 
-        HStack(alignment: .top, spacing: 18) {
+        AdaptiveStack {
             FormChart(items: ins.last10, color: color, teamID: key.id).frame(maxWidth: .infinity)
-            splits(ins).frame(width: 360)
+            splits(ins).frame(width: Device.isPhone ? nil : 360)
         }
 
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 420), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(420)), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
             GameListCard(title: "Last matches", games: Array(feed.results.prefix(5)), teamID: key.id, tint: color)
             GameListCard(title: "Coming up", games: Array(feed.upcoming.dropFirst(feed.live == nil ? 1 : 0).prefix(5)), teamID: key.id, tint: color2)
         }
 
         if ins.biggestWin != nil || ins.worstLoss != nil {
-            HStack(spacing: 18) {
+            AdaptiveStack(alignment: .center) {
                 if let g = ins.biggestWin { recordCard("Biggest win", g, symbol: "arrow.up.right", tint: AQ.win) }
                 if let g = ins.worstLoss { recordCard("Heaviest defeat", g, symbol: "arrow.down.right", tint: AQ.loss) }
                 clubCard(feed)
@@ -270,7 +270,7 @@ struct TeamView: View {
         if !boards.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 ClubSectionTitle(title: "Top performers", color: color, trailing: "All players") { tab = .players }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 18, alignment: .top)], spacing: 18) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(300)), spacing: 18, alignment: .top)], spacing: 18) {
                     ForEach(Array(boards.prefix(3).enumerated()), id: \.element.id) { i, c in
                         LeaderCard(category: c, path: key.leaguePath, limit: 3, accent: color.mix(with: .white, by: 0.25), tint: i % 2 == 0 ? color : color2).appear(i)
                     }
@@ -294,7 +294,7 @@ struct TeamView: View {
         tiles.append((isSoccer ? "Goals / game" : "Scored / game", String(format: "%.1f", ins.scored)))
         tiles.append((isSoccer ? "Conceded / game" : "Allowed / game", String(format: "%.1f", ins.conceded)))
         if isSoccer { tiles.append(("Clean sheets", "\(ins.cleanSheets)")) }
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 128), spacing: 12)], spacing: 12) {
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(128)), spacing: 12)], spacing: 12) {
             ForEach(Array(tiles.enumerated()), id: \.offset) { i, t in
                 StatTile(label: t.0, value: t.1, color: i % 3 == 1 ? color2 : color).appear(i)
             }
@@ -369,7 +369,7 @@ struct TeamView: View {
     // MARK: Other tabs
 
     @ViewBuilder private func matches(_ feed: TeamFeed) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 460), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(460)), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
             GameListCard(title: "Results", games: Array(feed.results.prefix(20)), teamID: key.id, tint: color)
             GameListCard(title: "Fixtures", games: Array(([feed.live].compactMap { $0 } + feed.upcoming).prefix(20)), teamID: key.id, tint: color2)
         }
@@ -391,7 +391,7 @@ struct TeamView: View {
             if !boards.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {
                     ClubSectionTitle(title: "Season leaders", color: color)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 18, alignment: .top)], spacing: 18) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(300)), spacing: 18, alignment: .top)], spacing: 18) {
                         ForEach(Array(boards.enumerated()), id: \.element.id) { i, c in
                             LeaderCard(category: c, path: key.leaguePath, limit: 5, accent: color.mix(with: .white, by: 0.25), tint: i % 2 == 0 ? color : color2).appear(i)
                         }
@@ -404,7 +404,7 @@ struct TeamView: View {
                 ForEach(order, id: \.self) { pos in
                     VStack(alignment: .leading, spacing: 12) {
                         ClubSectionTitle(title: positionName(pos), color: color, trailing: "\(groups[pos]?.count ?? 0)")
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 230), spacing: 12)], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(230)), spacing: 12)], spacing: 12) {
                             ForEach(Array((groups[pos] ?? []).enumerated()), id: \.element.id) { i, p in
                                 PlayerTile(player: p, color: color, isSoccer: isSoccer).appear(i)
                             }

@@ -36,7 +36,7 @@ struct RacingLeagueView: View {
             if !model.loaded {
                 LoadingState()
             } else {
-                HStack(alignment: .top, spacing: 18) {
+                AdaptiveStack {
                     if let n = model.next { raceFeature(n, label: n.state == .live ? "THIS WEEKEND" : "NEXT RACE") }
                     if let l = model.last { raceFeature(l, label: "LAST RACE") }
                 }
@@ -108,7 +108,7 @@ struct RacingLeagueView: View {
                         } else if r.state == .live {
                             LivePill()
                         }
-                        Text(Fmt.range(r.date, r.endDate)).font(.system(size: 12, weight: .medium)).foregroundStyle(AQ.secondary).frame(width: 120, alignment: .trailing)
+                        Text(Fmt.range(r.date, r.endDate)).font(.system(size: 12, weight: .medium)).foregroundStyle(AQ.secondary).frame(width: ph(120, 84), alignment: .trailing)
                     }
                     .padding(.vertical, 10).padding(.horizontal, 10)
                     .opacity(r.state == .post ? 0.75 : 1)
@@ -122,7 +122,7 @@ struct RacingLeagueView: View {
     }
 
     private var standingsView: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 420), spacing: 18, alignment: .top)], spacing: 18) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(420)), spacing: 18, alignment: .top)], spacing: 18) {
             ForEach(model.standings, id: \.0) { title, rows in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(.headline).padding(.bottom, 8)
@@ -167,7 +167,7 @@ struct RaceView: View {
                         if race.state == .live { LivePill() }
                     }
                     .font(.system(size: 11, weight: .heavy)).tracking(1).opacity(0.85)
-                    Text(race.name).font(.system(size: 36, weight: .heavy)).lineLimit(2).minimumScaleFactor(0.6)
+                    Text(race.name).font(.system(size: ph(36, 26), weight: .heavy)).lineLimit(2).minimumScaleFactor(0.6)
                     Text([race.circuit, race.location, Fmt.range(race.date, race.endDate)].compactMap { $0 }.joined(separator: " · "))
                         .font(.title3.weight(.medium)).opacity(0.8)
                 }
@@ -313,7 +313,8 @@ struct GolfLeaderboard: View {
 
     var body: some View {
         let players = limit.map { Array(tournament.players.prefix($0)) } ?? tournament.players
-        let rounds = tournament.players.map(\.rounds.count).max() ?? 0
+        // Phone: hide round-by-round scores to make room for names.
+        let rounds = Device.isPhone ? 0 : (tournament.players.map(\.rounds.count).max() ?? 0)
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 Text("POS").frame(width: 50, alignment: .leading)
@@ -472,7 +473,7 @@ struct TennisTournamentView: View {
             ForEach(rounds, id: \.self) { r in
                 VStack(alignment: .leading, spacing: 12) {
                     Text(r.uppercased()).font(.system(size: 12, weight: .heavy)).tracking(1).foregroundStyle(AQ.secondary)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 330), spacing: 14, alignment: .top)], spacing: 14) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(330)), spacing: 14, alignment: .top)], spacing: 14) {
                         ForEach(Array(matches.filter { $0.round == r }.enumerated()), id: \.element.id) { i, m in TennisMatchCard(match: m).appear(i) }
                     }
                 }
@@ -556,7 +557,7 @@ struct MMALeagueView: View {
         if !list.isEmpty {
             VStack(alignment: .leading, spacing: 14) {
                 SectionTitle(title)
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 360), spacing: 14)], spacing: 14) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(360)), spacing: 14)], spacing: 14) {
                     ForEach(Array(list.enumerated()), id: \.element.id) { i, c in
                         Button { router.push(.fightCard(c)) } label: { FightCardRow(card: c) }
                             .buttonStyle(PressableStyle()).appear(i)
@@ -610,7 +611,7 @@ struct FightCardHero: View {
                     HStack(alignment: .center, spacing: 20) {
                         fighter(main.fighters[0], main: main)
                         VStack(spacing: 6) {
-                            Text("VS").font(.system(size: 34, weight: .black, design: .rounded)).foregroundStyle(.white.opacity(0.9))
+                            Text("VS").font(.system(size: ph(34, 24), weight: .black, design: .rounded)).foregroundStyle(.white.opacity(0.9))
                             Text(main.weightClass.uppercased()).font(.system(size: 11, weight: .heavy)).tracking(1).foregroundStyle(AQ.secondary)
                             if let r = main.rounds { Text("\(r) rounds").font(.system(size: 11)).foregroundStyle(AQ.tertiary) }
                             if main.state == .post { Text(resultLine(main)).font(.system(size: 12, weight: .bold)).foregroundStyle(Color(hex: "FFD43B")) }
@@ -623,7 +624,7 @@ struct FightCardHero: View {
             }
             .padding(24)
         }
-        .frame(height: compact ? 300 : 340)
+        .frame(height: Device.isPhone ? 280 : (compact ? 300 : 340))
         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Color(hex: "FFD43B").opacity(0.25)))
         .shadow(color: Color(hex: "B00B0B").opacity(0.4), radius: 26, y: 12)
@@ -633,17 +634,17 @@ struct FightCardHero: View {
 
     private func fighter(_ f: Fighter, main: Fight) -> some View {
         VStack(spacing: 8) {
-            RemoteImage([f.athlete.photo("mma/ufc")], size: compact ? 130 : 160, circular: true, placeholder: "person.fill")
+            RemoteImage([f.athlete.photo("mma/ufc")], size: Device.isPhone ? 86 : (compact ? 130 : 160), circular: true, placeholder: "person.fill")
                 .background(Circle().fill(AQ.fill))
                 .overlay(Circle().strokeBorder(f.winner == true ? Color(hex: "FFD43B") : .white.opacity(0.2), lineWidth: f.winner == true ? 3 : 1))
                 .shadow(color: f.winner == true ? Color(hex: "FFD43B").opacity(0.5) : .clear, radius: 16)
             HStack(spacing: 6) {
                 CountryTag(url: f.athlete.flag)
-                Text(f.athlete.name).font(.system(size: 17, weight: .heavy)).lineLimit(1)
+                Text(f.athlete.name).font(.system(size: ph(17, 13), weight: .heavy)).lineLimit(2).multilineTextAlignment(.center)
             }
             if let r = f.record { Text(r).font(.system(size: 12, weight: .semibold)).foregroundStyle(AQ.secondary) }
         }
-        .frame(width: 240)
+        .frame(width: ph(240, 118))
         .opacity(main.state == .post && f.winner == false ? 0.6 : 1)
     }
 }
@@ -743,7 +744,7 @@ struct CricketView: View {
                 ForEach(series, id: \.self) { s in
                     VStack(alignment: .leading, spacing: 12) {
                         Text(s.uppercased()).font(.system(size: 12, weight: .heavy)).tracking(1).foregroundStyle(AQ.secondary)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 14, alignment: .top)], spacing: 14) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(340)), spacing: 14, alignment: .top)], spacing: 14) {
                             ForEach(Array(games.filter { $0.competition == s }.enumerated()), id: \.element.id) { i, g in
                                 CricketCard(game: g).appear(i)
                             }

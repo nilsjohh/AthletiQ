@@ -46,7 +46,7 @@ struct GameView: View {
                 scoreboard(d).appear(0)
                 if !d.periodLabels.isEmpty && !d.game.home.linescores.isEmpty { linescore(d).appear(1) }
                 LineupSection(detail: d).appear(2)
-                HStack(alignment: .top, spacing: 18) {
+                AdaptiveStack {
                     if !d.keyEvents.isEmpty { timeline(d).frame(maxWidth: .infinity).appear(2) }
                     if !d.teamStats.isEmpty { teamStats(d).frame(maxWidth: .infinity).appear(3) }
                 }
@@ -81,14 +81,14 @@ struct GameView: View {
                     VStack(spacing: 6) {
                         if d.game.hasScore {
                             Text("\(l.score ?? "0")  –  \(r.score ?? "0")")
-                                .font(.system(size: 66, weight: .heavy, design: .rounded)).monospacedDigit()
+                                .font(.system(size: ph(66, 40), weight: .heavy, design: .rounded)).monospacedDigit()
                                 .contentTransition(.numericText())
                                 .shadow(color: .black.opacity(0.3), radius: 10)
                         } else {
-                            Text(Fmt.time(d.game.date)).font(.system(size: 54, weight: .heavy, design: .rounded))
+                            Text(Fmt.time(d.game.date)).font(.system(size: ph(54, 34), weight: .heavy, design: .rounded))
                         }
                         Text(d.game.state == .pre ? Fmt.day(d.game.date) : d.game.detail)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: ph(14, 12), weight: .bold)).lineLimit(1).minimumScaleFactor(0.7)
                             .foregroundStyle(d.game.state == .live ? AQ.live : .white.opacity(0.8))
                         if let s = d.game.seriesSummary { Text(s).font(.system(size: 12, weight: .semibold)).opacity(0.75) }
                     }
@@ -99,21 +99,21 @@ struct GameView: View {
                     Label(v, systemImage: "mappin.and.ellipse").font(.system(size: 12, weight: .medium)).opacity(0.7)
                 }
             }
-            .padding(28)
+            .padding(ph(28, 16))
         }
-        .frame(height: 300)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(height: ph(300, 236))
+        .clipShape(RoundedRectangle(cornerRadius: ph(28, 22), style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(.white.opacity(0.12)))
         .foregroundStyle(.white)
     }
 
     private func side(_ s: Side, _ d: GameDetail) -> some View {
         VStack(spacing: 10) {
-            TeamLogo(team: s.team, size: 96).shadow(color: .black.opacity(0.4), radius: 14, y: 6)
-            TeamLink(team: s.team, path: path, font: .system(size: 17, weight: .heavy), short: true)
+            TeamLogo(team: s.team, size: ph(96, 56)).shadow(color: .black.opacity(0.4), radius: 14, y: 6)
+            TeamLink(team: s.team, path: path, font: .system(size: ph(17, 13.5), weight: .heavy), short: true)
             if let r = s.record { Text(r).font(.system(size: 12, weight: .semibold)).opacity(0.7) }
         }
-        .frame(width: 220)
+        .frame(width: ph(220, 92))
         .opacity(d.game.isLoser(s) ? 0.75 : 1)
     }
 
@@ -122,7 +122,7 @@ struct GameView: View {
         return VStack(spacing: 8) {
             HStack(spacing: 0) {
                 Text("").frame(maxWidth: .infinity, alignment: .leading)
-                ForEach(d.periodLabels, id: \.self) { Text($0).frame(width: 40) }
+                ForEach(d.periodLabels, id: \.self) { Text($0).frame(width: ph(40, 30)) }
                 Text("T").frame(width: 46)
             }
             .font(.system(size: 11, weight: .heavy)).foregroundStyle(AQ.tertiary)
@@ -131,7 +131,7 @@ struct GameView: View {
                     HStack(spacing: 8) { TeamLogo(team: s.team, size: 22); Text(s.team.abbreviation).font(.system(size: 14, weight: .bold)) }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     ForEach(Array(d.periodLabels.enumerated()), id: \.offset) { i, _ in
-                        Text(i < s.linescores.count ? s.linescores[i] : "–").frame(width: 40).monospacedDigit().foregroundStyle(AQ.secondary)
+                        Text(i < s.linescores.count ? s.linescores[i] : "–").frame(width: ph(40, 30)).monospacedDigit().foregroundStyle(AQ.secondary)
                     }
                     Text(s.score ?? "–").frame(width: 46).font(.system(size: 15, weight: .heavy)).monospacedDigit()
                 }
@@ -207,7 +207,7 @@ struct GameView: View {
     private func performers(_ d: GameDetail) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionTitle("Top performers")
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 14)], spacing: 14) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gm(340)), spacing: 14)], spacing: 14) {
                 ForEach(Array(d.performers.enumerated()), id: \.element.id) { i, p in
                     VStack(alignment: .leading, spacing: 10) {
                         Text(p.category).font(.system(size: 12, weight: .heavy)).tracking(0.6).foregroundStyle(AQ.secondary)
